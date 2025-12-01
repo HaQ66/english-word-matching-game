@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英语单词配对游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Comic Sans MS', 'Arial Rounded MT Bold', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(to bottom, #87CEEB, #1E90FF);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            overflow: hidden;
+        }
+        
+        .game-container {
+            width: 100%;
+            max-width: 800px;
+            height: 95vh;
+            max-height: 95vh;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            text-align: center;
+            position: relative;
+            border: 8px solid #FFD700;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        h1 {
+            color: #FF4500;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 0 #FFD700;
+            font-size: clamp(20px, 5vw, 28px);
+            flex-shrink: 0;
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            background-color: #FFD700;
+            padding: 8px;
+            border-radius: 10px;
+            font-weight: bold;
+            color: #8B4513;
+            box-shadow: 0 4px 0 #DAA520;
+            font-size: clamp(14px, 4vw, 18px);
+            flex-shrink: 0;
+        }
+        
+        .timer {
+            font-size: clamp(16px, 4vw, 20px);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+            font-size: clamp(12px, 3.5vw, 16px);
+        }
+        
+        button:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+        
+        .start-btn {
+            background-color: #32CD32;
+            color: white;
+        }
+        
+        .pause-btn {
+            background-color: #FFA500;
+            color: white;
+        }
+        
+        .restart-btn {
+            background-color: #4169E1;
+            color: white;
+        }
+        
+        .continue-btn {
+            background-color: #32CD32;
+            color: white;
+        }
+        
+        .hint-btn {
+            background-color: #9370DB;
+            color: white;
+        }
+        
+        .game-board {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex: 1;
+            min-height: 0;
+            grid-auto-rows: 1fr;
+            /* 列数和行数由JavaScript动态设置 */
+        }
+        
+        .card {
+            background-color: #FFD700;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: clamp(14px, 3vw, 16px);
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #DAA520;
+            transition: all 0.3s;
+            user-select: none;
+            color: #8B4513;
+            position: relative;
+            padding: 8px 5px;
+            text-align: center;
+            word-break: break-word;
+            min-height: 70px;
+        }
+        
+        .card.selected {
+            background-color: #FFA500;
+            transform: scale(1.05);
+        }
+        
+        .card.matched {
+            visibility: hidden;
+            opacity: 0;
+            transform: scale(0);
+        }
+        
+        .card.correct {
+            background-color: #32CD32;
+            box-shadow: 0 4px 0 #228B22;
+        }
+        
+        .card.wrong {
+            background-color: #FF4500;
+            box-shadow: 0 4px 0 #B22222;
+            animation: shake 0.5s;
+        }
+        
+        .card.hint {
+            background-color: #32CD32;
+            box-shadow: 0 4px 0 #228B22;
+            animation: pulse 1s ease-in-out;
+        }
+        
+        .card.english::after {
+            content: "🔊";
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 12px;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .pause-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            display: none;
+        }
+        
+        .pause-overlay h2 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: clamp(24px, 6vw, 32px);
+        }
+        
+        .pause-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .completion-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            display: none;
+        }
+        
+        .completion-overlay h2 {
+            color: #FFD700;
+            margin-bottom: 10px;
+            font-size: clamp(24px, 6vw, 32px);
+        }
+        
+        .completion-time {
+            color: white;
+            font-size: clamp(18px, 5vw, 24px);
+            margin-bottom: 20px;
+        }
+        
+        .firework {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            box-shadow: 0 0 10px 5px white;
+            animation: explode 1s forwards;
+        }
+        
+        @keyframes explode {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(20);
+                opacity: 0;
+            }
+        }
+        
+        .bottom-section {
+            flex-shrink: 0;
+        }
+        
+        .instructions {
+            background-color: #FFD700;
+            padding: 8px;
+            border-radius: 10px;
+            font-size: clamp(10px, 3vw, 14px);
+            color: #8B4513;
+            margin-bottom: 10px;
+        }
+        
+        .audio-notice {
+            background-color: #FF6347;
+            color: white;
+            padding: 6px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: clamp(10px, 2.5vw, 12px);
+            display: none;
+        }
+        
+        .hint-count {
+            font-size: clamp(12px, 3vw, 14px);
+            color: #8B4513;
+            margin-top: 5px;
+        }
+
+        .debug-info {
+            background-color: #f0f0f0;
+            padding: 5px;
+            border-radius: 5px;
+            margin-top: 5px;
+            font-size: 10px;
+            color: #666;
+            display: none;
+        }
+        
+        .progress-container {
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            padding: 4px;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background-color: #32CD32;
+            border-radius: 5px;
+            width = 0%;
+            transition: width 0.5s;
+        }
+        
+        .progress-text {
+            font-size: clamp(10px, 2.5vw, 12px);
+            margin-top: 3px;
+            color: #8B4513;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>英语单词配对游戏</h1>
+        
+        <div class="game-info">
+            <div class="timer">时间: <span id="time">00:00</span></div>
+            <div class="pairs">配对: <span id="pairs">0/<span id="totalPairs">0</span></span></div>
+        </div>
+        
+        <div class="controls">
+            <button class="start-btn" id="startBtn">开始游戏</button>
+            <button class="pause-btn" id="pauseBtn" disabled>暂停</button>
+            <button class="hint-btn" id="hintBtn" disabled>提示 (剩余: <span id="hintCount">3</span>)</button>
+        </div>
+        
+        <div class="game-board" id="gameBoard"></div>
+        
+        <div class="bottom-section">
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+                <div class="progress-text" id="progressText">学习进度: 0/20</div>
+            </div>
+            
+            <div class="instructions">
+                <p>点击英文单词会发音，然后点击对应的中文意思进行配对</p>
+                <div class="debug-info" id="debugInfo"></div>
+            </div>
+            
+            <div class="audio-notice" id="audioNotice">
+                注意：您的浏览器可能阻止了自动播放音频，请点击任意英文单词启用发音功能
+            </div>
+        </div>
+        
+        <div class="pause-overlay" id="pauseOverlay">
+            <h2>游戏暂停</h2>
+            <div class="pause-buttons">
+                <button class="continue-btn" id="continueBtn">继续游戏</button>
+                <button class="restart-btn" id="restartBtn1">重新开始</button>
+            </div>
+        </div>
+        
+        <div class="completion-overlay" id="completionOverlay">
+            <h2>恭喜你完成了所有配对!</h2>
+            <div class="completion-time" id="completionTime">用时: 00:00</div>
+            <button class="restart-btn" id="restartBtn2">再来一次</button>
+        </div>
+    </div>
+
+    <script>
+        // 替换为新的英语单词列表
+        const allWordPairs = [
+            { english: "half", chinese: "半；一半" },
+            { english: "past", chinese: "晚于；迟于" },
+            { english: "hour", chinese: "小时" },
+            { english: "walk", chinese: "步行" },
+            { english: "get to school", chinese: "到达学校" },
+            { english: "seat", chinese: "座位" },
+            { english: "last", chinese: "上一个；刚过去的" },
+            { english: "last night", chinese: "昨晚" },
+            { english: "little", chinese: "小的" },
+            { english: "fan", chinese: "迷；爱好者" }
+        ];
+
+        let gameStarted = false;
+        let gamePaused = false;
+        let timerInterval;
+        let seconds = 0;
+        let selectedCard = null;
+        let matchedPairs = 0;
+        let totalPairsToMatch = 0;
+        let audioEnabled = false;
+        let availableCards = [];
+        let usedCards = [];
+        let emptySlots = [];
+        let hintCount = 3;
+        
+        // 记录所有出现过的单词
+        let allUsedWords = new Set();
+        let allWordsAppeared = false;
+
+        const gameBoard = document.getElementById('gameBoard');
+        const timeDisplay = document.getElementById('time');
+        const pairsDisplay = document.getElementById('pairs');
+        const totalPairsDisplay = document.getElementById('totalPairs');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const hintBtn = document.getElementById('hintBtn');
+        const hintCountDisplay = document.getElementById('hintCount');
+        const pauseOverlay = document.getElementById('pauseOverlay');
+        const continueBtn = document.getElementById('continueBtn');
+        const restartBtn1 = document.getElementById('restartBtn1');
+        const restartBtn2 = document.getElementById('restartBtn2');
+        const completionOverlay = document.getElementById('completionOverlay');
+        const completionTime = document.getElementById('completionTime');
+        const audioNotice = document.getElementById('audioNotice');
+        const debugInfo = document.getElementById('debugInfo');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+
+        // 计算可以容纳的单词对数量
+        function calculateMaxPairs() {
+            const gameBoardHeight = gameBoard.offsetHeight;
+            const gameBoardWidth = gameBoard.offsetWidth;
+            
+            // 理想卡片尺寸
+            const idealCardHeight = 80;
+            const idealCardWidth = 140;
+            const gap = 10;
+            
+            // 计算最大列数
+            const maxCols = Math.floor((gameBoardWidth + gap) / (idealCardWidth + gap));
+            const cols = Math.max(2, Math.min(6, maxCols));
+            
+            // 计算最大行数
+            const maxRows = Math.floor((gameBoardHeight + gap) / (idealCardHeight + gap));
+            const rows = Math.max(2, maxRows);
+            
+            // 计算可以容纳的卡片总数（必须是偶数）
+            const totalCards = cols * rows;
+            const maxPairs = Math.floor(totalCards / 2);
+            
+            return Math.min(maxPairs, allWordPairs.length);
+        }
+
+        function initGame() {
+            clearInterval(timerInterval);
+            
+            gameStarted = false;
+            gamePaused = false;
+            seconds = 0;
+            matchedPairs = 0;
+            selectedCard = null;
+            audioEnabled = false;
+            emptySlots = [];
+            usedCards = [];
+            hintCount = 3;
+            allUsedWords = new Set();
+            allWordsAppeared = false;
+            
+            // 生成所有卡片
+            availableCards = generateAllCards();
+            
+            timeDisplay.textContent = "00:00";
+            gameBoard.innerHTML = '';
+            debugInfo.textContent = '';
+            
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            hintBtn.disabled = true;
+            hintCountDisplay.textContent = hintCount;
+            
+            pauseOverlay.style.display = 'none';
+            completionOverlay.style.display = 'none';
+            audioNotice.style.display = 'none';
+            
+            const maxPairs = calculateMaxPairs();
+            totalPairsToMatch = allWordPairs.length;
+            pairsDisplay.textContent = `${matchedPairs}/${totalPairsToMatch}`;
+            totalPairsDisplay.textContent = totalPairsToMatch;
+            
+            createInitialCards(maxPairs);
+            updateProgressBar();
+        }
+
+        // 生成所有卡片
+        function generateAllCards() {
+            const cards = [];
+            
+            allWordPairs.forEach(pair => {
+                cards.push({ 
+                    text: pair.english, 
+                    type: 'english', 
+                    pairId: pair.english + pair.chinese,
+                    originalPair: pair
+                });
+                cards.push({ 
+                    text: pair.chinese, 
+                    type: 'chinese', 
+                    pairId: pair.english + pair.chinese,
+                    originalPair: pair
+                });
+            });
+            
+            return cards.sort(() => Math.random() - 0.5);
+        }
+
+        // 获取所有需要的单词
+        function getAllRequiredWords() {
+            const allEnglishWords = allWordPairs.map(pair => pair.english);
+            const allChineseWords = allWordPairs.map(pair => pair.chinese);
+            return [...allEnglishWords, ...allChineseWords];
+        }
+
+        // 创建初始卡片
+        function createInitialCards(pairsCount) {
+            const totalSlots = pairsCount * 2;
+            gameBoard.innerHTML = '';
+            
+            // 计算合适的列数
+            const gameBoardWidth = gameBoard.offsetWidth;
+            const idealCardWidth = 140;
+            const gap = 10;
+            const maxCols = Math.floor((gameBoardWidth + gap) / (idealCardWidth + gap));
+            const cols = Math.max(2, Math.min(6, maxCols));
+            const rows = Math.ceil(totalSlots / cols);
+            
+            // 设置网格布局
+            gameBoard.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            gameBoard.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+            
+            // 创建格子
+            for (let i = 0; i < totalSlots; i++) {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'card';
+                cardElement.dataset.index = i;
+                gameBoard.appendChild(cardElement);
+            }
+            
+            // 填充卡片
+            fillEmptySlots(pairsCount);
+        }
+
+        // 填充空槽位
+        function fillEmptySlots(count) {
+            const slots = Array.from(document.querySelectorAll('.card:not(.has-content)'));
+            
+            // 只填充能放下的卡片数量
+            for (let i = 0; i < Math.min(slots.length, count * 2); i++) {
+                if (availableCards.length === 0) break;
+                
+                const slot = slots[i];
+                const cardData = availableCards[0];
+                
+                createCardInSlot(slot, cardData);
+                markCardAsUsed(cardData);
+            }
+            
+            updateProgressBar();
+            checkAllWordsAppeared();
+        }
+
+        // 标记卡片为已使用
+        function markCardAsUsed(card) {
+            allUsedWords.add(card.text);
+            
+            // 从availableCards中移除
+            const index = availableCards.findIndex(avCard => 
+                avCard.text === card.text && avCard.pairId === card.pairId);
+            if (index !== -1) {
+                availableCards.splice(index, 1);
+            }
+        }
+
+        function createCardInSlot(slot, cardData) {
+            slot.textContent = cardData.text;
+            slot.dataset.type = cardData.type;
+            slot.dataset.pairId = cardData.pairId;
+            slot.classList.add('has-content');
+            slot.classList.add(cardData.type);
+            
+            slot.addEventListener('click', () => handleCardClick(slot));
+        }
+
+        // 增强的检查函数
+        function checkAllWordsAppeared() {
+            const allRequiredWords = getAllRequiredWords();
+            const allAppeared = allRequiredWords.every(word => allUsedWords.has(word));
+            
+            if (allAppeared && !allWordsAppeared) {
+                allWordsAppeared = true;
+            }
+            
+            return allWordsAppeared;
+        }
+
+        function startGame() {
+            if (gameStarted) return;
+            gameStarted = true;
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            hintBtn.disabled = false;
+            startTimer();
+        }
+
+        // 提示功能
+        function showHint() {
+            if (hintCount <= 0 || !gameStarted || gamePaused) return;
+            
+            const matchablePairs = findMatchablePairs();
+            
+            if (matchablePairs.length > 0) {
+                const randomPair = matchablePairs[Math.floor(Math.random() * matchablePairs.length)];
+                
+                randomPair.card1.classList.add('hint');
+                randomPair.card2.classList.add('hint');
+                
+                playHintSound();
+                
+                setTimeout(() => {
+                    randomPair.card1.classList.remove('hint');
+                    randomPair.card2.classList.remove('hint');
+                }, 1500);
+                
+                hintCount--;
+                hintCountDisplay.textContent = hintCount;
+                
+                if (hintCount <= 0) {
+                    hintBtn.disabled = true;
+                }
+            }
+        }
+
+        // 找到当前页面上所有可匹配的卡片对
+        function findMatchablePairs() {
+            const cards = Array.from(document.querySelectorAll('.card.has-content:not(.matched)'));
+            const matchablePairs = [];
+            
+            for (let i = 0; i < cards.length; i++) {
+                for (let j = i + 1; j < cards.length; j++) {
+                    const card1 = cards[i];
+                    const card2 = cards[j];
+                    
+                    const isMatch = 
+                        card1.dataset.pairId === card2.dataset.pairId && 
+                        card1.dataset.type !== card2.dataset.type;
+                    
+                    if (isMatch) {
+                        matchablePairs.push({
+                            card1: card1,
+                            card2: card2
+                        });
+                    }
+                }
+            }
+            
+            return matchablePairs;
+        }
+
+        function handleCardClick(card) {
+            if (!gameStarted || gamePaused || card.classList.contains('matched')) return;
+            
+            if (card.dataset.type === 'english') {
+                speakWord(card.textContent);
+            }
+            
+            if (selectedCard) {
+                if (selectedCard === card) return;
+                
+                const isSameType = selectedCard.dataset.type === card.dataset.type;
+                if (isSameType) {
+                    selectedCard.classList.remove('selected');
+                    card.classList.add('selected');
+                    selectedCard = card;
+                    return;
+                }
+                
+                const isMatch = selectedCard.dataset.pairId === card.dataset.pairId;
+                
+                if (isMatch) {
+                    playCorrectSound();
+                    selectedCard.classList.add('correct', 'matched');
+                    card.classList.add('correct', 'matched');
+                    matchedPairs++;
+                    pairsDisplay.textContent = `${matchedPairs}/${totalPairsToMatch}`;
+                    
+                    emptySlots.push(selectedCard);
+                    emptySlots.push(card);
+                    
+                    setTimeout(() => {
+                        fillMatchedSlots();
+                    }, 500);
+                    
+                    if (matchedPairs === totalPairsToMatch) {
+                        setTimeout(() => completeGame(), 1000);
+                    }
+                } else {
+                    playWrongSound();
+                    const tempSelectedCard = selectedCard;
+                    const tempCard = card;
+                    
+                    tempSelectedCard.classList.add('wrong');
+                    tempCard.classList.add('wrong');
+                    
+                    setTimeout(() => {
+                        tempSelectedCard.classList.remove('wrong', 'selected');
+                        tempCard.classList.remove('wrong', 'selected');
+                    }, 500);
+                }
+                
+                selectedCard = null;
+            } else {
+                document.querySelectorAll('.card.selected').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedCard = card;
+            }
+        }
+
+        // 补位函数
+        function fillMatchedSlots() {
+            if (emptySlots.length >= 2 && availableCards.length >= 2) {
+                const slot1 = emptySlots.shift();
+                const slot2 = emptySlots.shift();
+                
+                // 填充新的卡片对
+                if (availableCards.length >= 2) {
+                    const card1 = availableCards[0];
+                    const card2 = availableCards[1];
+                    
+                    slot1.className = 'card has-content';
+                    createCardInSlot(slot1, card1);
+                    markCardAsUsed(card1);
+                    
+                    slot2.className = 'card has-content';
+                    createCardInSlot(slot2, card2);
+                    markCardAsUsed(card2);
+                }
+                
+                updateProgressBar();
+                checkAllWordsAppeared();
+            }
+        }
+
+        // 更新进度条
+        function updateProgressBar() {
+            const totalWords = getAllRequiredWords().length;
+            const usedWords = allUsedWords.size;
+            const progress = (usedWords / totalWords) * 100;
+            progressBar.style.width = `${progress}%`;
+            progressText.textContent = `学习进度: ${usedWords}/${totalWords}`;
+        }
+
+        function speakWord(word) {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(word);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.8;
+            utterance.onerror = function() {
+                if (!audioEnabled) audioNotice.style.display = 'block';
+            };
+            utterance.onend = function() {
+                audioEnabled = true;
+                audioNotice.style.display = 'none';
+            };
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function playCorrectSound() {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = context.createOscillator();
+            const gainNode = context.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(context.destination);
+            oscillator.type = 'sine';
+            oscillator.frequency.value = 523.25;
+            gainNode.gain.value = 0.1;
+            oscillator.start();
+            oscillator.stop(context.currentTime + 0.5);
+        }
+
+        function playWrongSound() {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = context.createOscillator();
+            const gainNode = context.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(context.destination);
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.value = 220;
+            gainNode.gain.value = 0.1;
+            oscillator.start();
+            oscillator.stop(context.currentTime + 0.5);
+        }
+
+        function playHintSound() {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = context.createOscillator();
+            const gainNode = context.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(context.destination);
+            oscillator.type = 'sine';
+            oscillator.frequency.value = 659.25;
+            gainNode.gain.value = 0.1;
+            oscillator.start();
+            oscillator.stop(context.currentTime + 0.3);
+        }
+
+        function playCelebrationSound() {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((note, index) => {
+                setTimeout(() => {
+                    const oscillator = context.createOscillator();
+                    const gainNode = context.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(context.destination);
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = note;
+                    gainNode.gain.value = 0.1;
+                    oscillator.start();
+                    oscillator.stop(context.currentTime + 0.3);
+                }, index * 200);
+            });
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!gamePaused) {
+                    seconds++;
+                    updateTimerDisplay();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            timeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        function pauseGame() {
+            if (!gameStarted || gamePaused) return;
+            gamePaused = true;
+            pauseOverlay.style.display = 'flex';
+        }
+
+        function continueGame() {
+            if (!gameStarted || !gamePaused) return;
+            gamePaused = false;
+            pauseOverlay.style.display = 'none';
+        }
+
+        function completeGame() {
+            checkAllWordsAppeared();
+            clearInterval(timerInterval);
+            playCelebrationSound();
+            createFireworks();
+            setTimeout(() => {
+                completionTime.textContent = `用时: ${timeDisplay.textContent}`;
+                completionOverlay.style.display = 'flex';
+            }, 1500);
+        }
+
+        function createFireworks() {
+            const container = document.querySelector('.game-container');
+            const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    const firework = document.createElement('div');
+                    firework.className = 'firework';
+                    firework.style.left = `${Math.random() * 80 + 10}%`;
+                    firework.style.top = `${Math.random() * 80 + 10}%`;
+                    firework.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    container.appendChild(firework);
+                    setTimeout(() => firework.remove(), 1000);
+                }, i * 100);
+            }
+        }
+
+        // 窗口大小改变时重新初始化游戏
+        function handleResize() {
+            if (gameStarted && !gamePaused) {
+                initGame();
+            }
+        }
+
+        startBtn.addEventListener('click', startGame);
+        pauseBtn.addEventListener('click', pauseGame);
+        hintBtn.addEventListener('click', showHint);
+        continueBtn.addEventListener('click', continueGame);
+        restartBtn1.addEventListener('click', initGame);
+        restartBtn2.addEventListener('click', initGame);
+
+        window.addEventListener('load', initGame);
+        window.addEventListener('resize', handleResize);
+    </script>
+</body>
+</html>
